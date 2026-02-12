@@ -1,203 +1,188 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 function App() {
-  const [query, setQuery] = useState('');
-  const [tiktokTags, setTiktokTags] = useState([]);
-  const [igTags, setIgTags] = useState([]);
-  const [ytTags, setYtTags] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showPlaceholders, setShowPlaceholders] = useState(true);
+  const [glassBlur, setGlassBlur] = useState(12);
+  const [glassOpacity, setGlassOpacity] = useState(0.28);
+  const [glassBorderOpacity, setGlassBorderOpacity] = useState(0.2);
+  const [glassColor, setGlassColor] = useState('#141432');
 
-  // Fast scrolling placeholders (randomized on mount)
-  const placeholders = [
-    "Apex Legends ranked 1v3 clutch", "Tarkov wipe funny fails", "gamer dad reaction clips",
-    "Valorant ace moments", "Minecraft speedrun world record", "lofi hip hop radio beats",
-    "Fortnite zero build wins", "GTA RP funny moments", "Among Us sus impostor plays",
-    "Warzone gulag comebacks", "Roblox obby fails", "Call of Duty nukes",
-    "Elden Ring boss rage quits", "Cyberpunk 2077 glitches", "Stardew Valley farm tours",
-    "Overwatch 2 clutch plays", "League of Legends pentakills", "CS2 ace clutches",
-    "Dead by Daylight killer mains", "Phasmophobia ghost hunts", "Fall Guys crown wins",
-    "Pokemon shiny hunting", "Animal Crossing island tours", "Genshin Impact spiral abyss",
-    "Hollow Knight boss fights", "Super Mario speedruns", "Zelda TOTK korok hunts",
-    "Skyrim dragon shouts", "Terraria boss fights", "No Man's Sky expeditions"
-  ];
+  const [neoShadow, setNeoShadow] = useState(6);
+  const [neoInset, setNeoInset] = useState(false);
+  const [neoColor, setNeoColor] = useState('#e0e0e0');
 
-  useEffect(() => {
-    // Randomize order of placeholders
-    setPlaceholders(placeholders.sort(() => Math.random() - 0.5));
-  }, []);
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (query.trim()) {
-      setShowPlaceholders(false);
-    }
-  }, [query]);
+  const generateCss = () => {
+    const hexOpacity = Math.round(glassOpacity * 255).toString(16).padStart(2, '0');
+    const glassCss = `
+.glass-card {
+  background: ${glassColor}${hexOpacity};
+  backdrop-filter: blur(${glassBlur}px);
+  -webkit-backdrop-filter: blur(${glassBlur}px);
+  border: 1px solid rgba(0, 240, 255, ${glassBorderOpacity});
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 0 24px rgba(0,240,255,0.08);
+  transition: all 0.4s ease;
+}
+.glass-card:hover {
+  box-shadow: 0 16px 48px rgba(0,240,255,0.25), inset 0 0 32px rgba(0,240,255,0.12);
+}
+    `;
 
-  const fetchTags = async () => {
-    if (!query.trim()) return;
+    const neoCss = `
+.neo-card {
+  background: ${neoColor};
+  border-radius: 16px;
+  box-shadow: ${neoInset ? 'inset ' : ''}${neoShadow}px ${neoShadow}px ${neoShadow*2}px #bebebe,
+              ${neoInset ? 'inset ' : ''}-${neoShadow}px -${neoShadow}px ${neoShadow*2}px #ffffff;
+  transition: all 0.3s ease;
+}
+    `;
 
-    setLoading(true);
-    setError('');
-    setTiktokTags([]);
-    setIgTags([]);
-    setYtTags([]);
+    const fullCss = glassCss.trim() + '\n\n' + neoCss.trim();
 
-    try {
-      // TikTok hashtag suggest
-      const tiktokRes = await fetch(`https://www.tiktok.com/api/search/hashtag/?keyword=${encodeURIComponent(query)}`);
-      if (tiktokRes.ok) {
-        const json = await tiktokRes.json();
-        const tags = json?.data?.hashtag_list?.map(h => `#${h.title}`) || [];
-        setTiktokTags(tags.slice(0, 5));
-      }
-
-      // Instagram (via allorigins proxy for CORS)
-      const igRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.instagram.com/web/search/topsearch/?query=${encodeURIComponent(query)}`)}`);
-      if (igRes.ok) {
-        const json = await igRes.json();
-        const tags = json?.hashtags?.map(h => `#${h.hashtag.name}`) || [];
-        setIgTags(tags.slice(0, 5));
-      }
-
-      // YouTube suggest
-      const ytRes = await fetch(`https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}`);
-      if (ytRes.ok) {
-        const text = await ytRes.text();
-        const matches = text.match(/"(.*?)"/g) || [];
-        const tags = matches.map(m => `#${m.replace(/"/g, '')}`).slice(1, 6); // skip first (query itself)
-        setYtTags(tags);
-      }
-
-      if (!tiktokTags.length && !igTags.length && !ytTags.length) {
-        setError('No strong trending tags found – try a more specific vibe!');
-      }
-    } catch (err) {
-      setError('Network issue – try again in a sec');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copyTags = (tags) => {
-    navigator.clipboard.writeText(tags.join(' '));
-    alert('Copied!');
+    navigator.clipboard.writeText(fullCss);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto bg-black/15 backdrop-blur-xl rounded-3xl border border-cyan-500/20 shadow-2xl text-white">
-      <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center text-cyan-400 drop-shadow-lg">
-        Trending Tag Finder
+    <div className="generator-container p-6 max-w-5xl mx-auto text-white bg-black/25 backdrop-blur-2xl rounded-3xl border border-cyan-500/25 shadow-2xl">
+      <h1 className="text-3xl md:text-4xl font-bold mb-8 text-center tracking-tight drop-shadow-lg text-shadow-cyan">
+        Glass & Neo Generator
       </h1>
-      <p className="text-center text-cyan-300 mb-8 text-sm">
-        Type your video/game/vibe → get top 5 real trending tags for each platform
-      </p>
 
-      <div className="relative mb-8">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Apex Legends ranked 1v3 clutch"
-          className="w-full p-4 bg-black/50 border border-cyan-500/40 rounded-xl text-white placeholder-cyan-400 focus:outline-none focus:border-pink-500 transition text-lg"
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        {/* Glassmorphism */}
+        <div className="space-y-6 bg-black/20 backdrop-blur-lg p-6 rounded-2xl border border-cyan-500/20">
+          <h2 className="text-2xl font-semibold text-cyan-400 drop-shadow-md">Glassmorphism</h2>
 
-        {showPlaceholders && query === '' && (
-          <div className="absolute inset-0 pointer-events-none flex items-center overflow-hidden">
-            <div className="marquee text-cyan-300/70 text-sm font-light whitespace-nowrap">
-              {placeholders.map((p, i) => (
-                <span key={i} className="mx-8">
-                  {p} • 
-                </span>
-              ))}
-              {placeholders.map((p, i) => (
-                <span key={i + 'dup'} className="mx-8">
-                  {p} • 
-                </span>
-              ))}
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm mb-2 font-medium text-shadow-white">Blur: {glassBlur}px</label>
+              <input 
+                type="range" 
+                min="0" max="40" 
+                value={glassBlur} 
+                onChange={e => setGlassBlur(+e.target.value)}
+                className="w-full h-2 accent-cyan-500 bg-cyan-900/30 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-2 font-medium text-shadow-white">Opacity: {glassOpacity.toFixed(2)}</label>
+              <input 
+                type="range" 
+                min="0" max="0.5" step="0.01" 
+                value={glassOpacity} 
+                onChange={e => setGlassOpacity(+e.target.value)}
+                className="w-full h-2 accent-cyan-500 bg-cyan-900/30 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-2 font-medium text-shadow-white">Border opacity: {glassBorderOpacity.toFixed(2)}</label>
+              <input 
+                type="range" 
+                min="0" max="0.5" step="0.01" 
+                value={glassBorderOpacity} 
+                onChange={e => setGlassBorderOpacity(+e.target.value)}
+                className="w-full h-2 accent-cyan-500 bg-cyan-900/30 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-shadow-white">BG Color:</label>
+              <input 
+                type="color" 
+                value={glassColor} 
+                onChange={e => setGlassColor(e.target.value)}
+                className="w-12 h-10 rounded border border-cyan-500/40 cursor-pointer bg-transparent"
+              />
             </div>
           </div>
-        )}
 
-        <button
-          onClick={fetchTags}
-          disabled={loading || !query.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 watch-btn px-6 py-2 text-sm font-bold disabled:opacity-50"
+          <div 
+            className="preview-box w-full aspect-[4/3] rounded-2xl border border-cyan-500/30 shadow-xl mx-auto"
+            style={{
+              background: `${glassColor}${Math.round(glassOpacity * 255).toString(16).padStart(2, '0')}`,
+              backdropFilter: `blur(${glassBlur}px)`,
+              WebkitBackdropFilter: `blur(${glassBlur}px)`,
+            }}
+          >
+            <span className="text-white text-shadow-black">Glass Preview</span>
+          </div>
+        </div>
+
+        {/* Neomorphism */}
+        <div className="space-y-6 bg-black/20 backdrop-blur-lg p-6 rounded-2xl border border-pink-500/20">
+          <h2 className="text-2xl font-semibold text-pink-400 drop-shadow-md">Neomorphism</h2>
+
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm mb-2 font-medium text-shadow-white">Shadow size: {neoShadow}px</label>
+              <input 
+                type="range" 
+                min="1" max="20" 
+                value={neoShadow} 
+                onChange={e => setNeoShadow(+e.target.value)}
+                className="w-full h-2 accent-pink-500 bg-pink-900/30 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input 
+                type="checkbox" 
+                checked={neoInset} 
+                onChange={e => setNeoInset(e.target.checked)}
+                className="accent-pink-500 w-5 h-5 cursor-pointer"
+              />
+              <label className="text-sm font-medium text-shadow-white">Inset / embossed</label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-shadow-white">Base color:</label>
+              <input 
+                type="color" 
+                value={neoColor} 
+                onChange={e => setNeoColor(e.target.value)}
+                className="w-12 h-10 rounded border border-pink-500/40 cursor-pointer bg-transparent"
+              />
+            </div>
+          </div>
+
+          <div 
+            className="preview-box w-full aspect-[4/3] rounded-2xl shadow-2xl mx-auto"
+            style={{ background: neoColor, boxShadow: `${neoInset ? 'inset ' : ''}${neoShadow}px ${neoShadow}px ${neoShadow*2}px #bebebe, ${neoInset ? 'inset ' : ''}-${neoShadow}px -${neoShadow}px ${neoShadow*2}px #ffffff` }}
+          >
+            <span className="text-black text-shadow-white">Neo Preview</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <button 
+          onClick={generateCss}
+          className="watch-btn px-10 py-4 text-xl font-bold shadow-lg hover:shadow-2xl transition-all"
         >
-          {loading ? 'Scanning...' : 'Find Top 5'}
+          Generate & Copy CSS
         </button>
+
+        {copied && (
+          <div className="text-green-400 font-medium animate-pulse text-lg">
+            Copied to clipboard! ✓
+          </div>
+        )}
       </div>
 
-      {loading && <p className="text-center text-cyan-400 animate-pulse">Scanning trends...</p>}
-      {error && <p className="text-center text-red-400">{error}</p>}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        {/* TikTok */}
-        <div className="bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-pink-500/30">
-          <h2 className="text-xl font-semibold text-pink-400 mb-4 text-center">TikTok</h2>
-          {tiktokTags.length > 0 ? (
-            <div className="space-y-3">
-              {tiktokTags.map((tag, i) => (
-                <div key={i} className="flex justify-between items-center bg-black/30 p-3 rounded-lg border border-pink-500/20">
-                  <span className="text-pink-300">{tag}</span>
-                  <button onClick={() => navigator.clipboard.writeText(tag)} className="text-pink-400 hover:text-pink-300 text-sm">
-                    Copy
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => copyTags(tiktokTags)} className="w-full mt-4 py-2 bg-pink-600 hover:bg-pink-500 rounded-lg font-medium transition">
-                Copy All 5
-              </button>
-            </div>
-          ) : (
-            <p className="text-center text-gray-400">No strong tags yet</p>
-          )}
+      {generatedCss && (
+        <div className="mt-8">
+          <h3 className="text-xl mb-4 text-cyan-300 text-center">Generated CSS – copy & paste</h3>
+          <pre className="p-6 bg-black/40 rounded-2xl overflow-x-auto text-sm font-mono border border-cyan-500/30 whitespace-pre-wrap">
+            {generatedCss}
+          </pre>
         </div>
-
-        {/* Instagram */}
-        <div className="bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-cyan-500/30">
-          <h2 className="text-xl font-semibold text-cyan-400 mb-4 text-center">Instagram</h2>
-          {igTags.length > 0 ? (
-            <div className="space-y-3">
-              {igTags.map((tag, i) => (
-                <div key={i} className="flex justify-between items-center bg-black/30 p-3 rounded-lg border border-cyan-500/20">
-                  <span className="text-cyan-300">{tag}</span>
-                  <button onClick={() => navigator.clipboard.writeText(tag)} className="text-cyan-400 hover:text-cyan-300 text-sm">
-                    Copy
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => copyTags(igTags)} className="w-full mt-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg font-medium transition">
-                Copy All 5
-              </button>
-            </div>
-          ) : (
-            <p className="text-center text-gray-400">No strong tags yet</p>
-          )}
-        </div>
-
-        {/* YouTube */}
-        <div className="bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-purple-500/30">
-          <h2 className="text-xl font-semibold text-purple-400 mb-4 text-center">YouTube</h2>
-          {ytTags.length > 0 ? (
-            <div className="space-y-3">
-              {ytTags.map((tag, i) => (
-                <div key={i} className="flex justify-between items-center bg-black/30 p-3 rounded-lg border border-purple-500/20">
-                  <span className="text-purple-300">{tag}</span>
-                  <button onClick={() => navigator.clipboard.writeText(tag)} className="text-purple-400 hover:text-purple-300 text-sm">
-                    Copy
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => copyTags(ytTags)} className="w-full mt-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-medium transition">
-                Copy All 5
-              </button>
-            </div>
-          ) : (
-            <p className="text-center text-gray-400">No strong tags yet</p>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
